@@ -5,6 +5,7 @@ import signal
 import math as math
 import os, psutil
 from hamming import *
+import pigpio
 
 
 #cmd table
@@ -17,9 +18,12 @@ BROAD = 1
 
 global Baud 
 Baud = 0 
+pi1 = pigpio.pi()
 
 def initial(val):
-    GPIO.setmode(GPIO.BCM)
+    """GPIO.setmode(GPIO.BCM)"""
+    global pi1
+    pi1 = pigpio.pi()
     global Baud 
     Baud = val
 
@@ -50,10 +54,12 @@ def test():
 def sendInfo(n):
     #GPIO.setup(23, GPIO.OUT, pull_up_down = GPIO.PUD_DOWN)
     if (n==0):
-        GPIO.output(23, False)
+        """GPIO.output(23, False)"""
+        pi1.write(23, 0)
         #print 0
     else:
-        GPIO.output(23,True)
+        """GPIO.output(23,True)"""
+        pi1.write(23, 1)
         #print 1
 
 def mySleep(n):
@@ -68,12 +74,12 @@ def mySleep2(n):
     sleep(n)
 
 def transmit(val):
-    GPIO.setup(23, GPIO.OUT, pull_up_down = GPIO.PUD_DOWN)
+    """GPIO.setup(23, GPIO.OUT, pull_up_down = GPIO.PUD_DOWN)"""
     s = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    p = psutil.Process(os.getpid())
-    storedNice = p.nice()
+    #p = psutil.Process(os.getpid())
+    #storedNice = p.nice()
     #print (storedNice)
-    p.nice(31)
+    #p.nice(31)
 
     startTime = time()
     curTime = time()
@@ -83,7 +89,7 @@ def transmit(val):
         sendInfo ((val >> bit)&0x1)
         bit = int ((time() - startTime)*Baud)
         #print bit
-    p.nice(storedNice)     
+    #p.nice(storedNice)     
     signal.signal(signal.SIGINT, s)
     #mySleep(0.04)
     #GPIO.cleanup()
@@ -105,10 +111,11 @@ def process(cmd, data, pa, debug = False, additionalData = None):
     return 0
         
 def receive(cmd = 7, timeout = 0.5, debug = False):
-    GPIO.setup(23, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
+    """GPIO.setup(23, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)"""
     buf = 0L
     while (timeout > 0 ):
-        buf = (buf < 1) | GPIO.input(23)
+        buf = (buf < 1) | pi1.read(23)
+        """edited here"""
         delay = mySleep(1.0/Baud)
         timeout = timeout - delay
         #if (debug):
