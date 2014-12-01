@@ -89,6 +89,8 @@ def transmit(val):
     #GPIO.cleanup()
 
 def process(cmd, data, pa, debug = False):
+    if (cmd == ACK):
+        
     return False
         
 def receive(cmd = 7, timeout = 0.5, debug = False):
