@@ -39,7 +39,7 @@ def getSerial():
     for c in cpuserial:
         n += int(ord(c))
         
-    return n
+    return n & 0xF
 
 def test():
     initial(500)
@@ -88,10 +88,21 @@ def transmit(val):
     #mySleep(0.04)
     #GPIO.cleanup()
 
-def process(cmd, data, pa, debug = False):
+def process(cmd, data, pa, debug = False, additionalData = None):
     if (cmd == ACK):
-        
-    return False
+        if (data & 0x7 != ACK):
+            return 0
+        if ((data >> 7) != getSerial()):
+            return 0
+        return 1
+    if (cmd == BROAD):
+        if (data & 0x7 != BROAD):
+            return 0
+        if ((data >> 7)!= 0xF):
+            return 0
+        return (data >> 3)& 0xF
+
+    return 0
         
 def receive(cmd = 7, timeout = 0.5, debug = False):
     GPIO.setup(23, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
@@ -106,14 +117,16 @@ def receive(cmd = 7, timeout = 0.5, debug = False):
             pa = (buf >> 19) & 0x1
             trucked = (buf >> 4) & 0x7fff
             dec = decH1511(trunced)
-            if (process(cmd, dec, pa)):
-                return True
+            retVal = process(cmd, dec, pa)
+            if (retVal != 0):
+                return retVal
         elif ( (buf & 0xc00000) == 0xc00000 and (buf & 0x3)!= 0):
             pa = (buf >> 19) & 0x1
             trunked = (buf >> 4) & 0x7fff
             dec = decH1511(trunked)
-            if (process(dec, pa)):
-                return True
+            retVal = process(cmd, dec, pa)
+            if (retVal != 0):
+                return retVal
     if (debug):
         print('receive timeout')
     return False
