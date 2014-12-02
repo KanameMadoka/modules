@@ -26,6 +26,12 @@ def initial(val):
     pi1 = pigpio.pi()
     global Baud 
     Baud = val
+    pi1.set_mode(18, pigpio.OUTPUT)
+    pi1.set_mode(24, pigpio.OUTPUT)
+    pi1.set_mode(25, pigpio.OUTPUT)
+    pi1.write(18,1)
+    pi1.write(24, 1)
+    pi1.write(25, 1)
 
 def getSerial():
     cpuserial = "0000000000000000"
@@ -38,8 +44,8 @@ def getSerial():
     except:
         cpuserial = "ERROR00000000000"
     n = 0
-    print ('cpuSrial is')
-    print(cpuserial)
+    #print ('cpuSrial is')
+    #print(cpuserial)
     for c in cpuserial:
         n += int(ord(c))
         
@@ -62,6 +68,18 @@ def sendInfo(n):
         pi1.write(23, 1)
         #print 1
 
+def testSend():
+    startTime = time()
+    curTime = time()
+    while(True):
+        
+        bit = int((time() - startTime)*Baud)
+        val = bit % 2
+        sendInfo(val)
+        #print (val)
+       
+        
+
 def mySleep(n):
     #print ('sleep {}'.format(n))
     startTime = time()
@@ -72,6 +90,24 @@ def mySleep(n):
 
 def mySleep2(n):
     sleep(n)
+
+def transmit4(val):
+    for i in range (0, 100):
+        transmit(0xf0f0f0f0)
+        transmit(val)
+
+def transmit3(val):
+    for i in range(0, 50):
+        transmit(val)
+
+
+def transmit2(val):
+    for i in range (0,100):
+        transmit(0xAAAAA)
+    transmit(val)
+    for i in range (0, 100):
+        transmit(0xAAAAA)
+
 
 def transmit(val):
     """GPIO.setup(23, GPIO.OUT, pull_up_down = GPIO.PUD_DOWN)"""
@@ -109,36 +145,69 @@ def process(cmd, data, pa, debug = False, additionalData = None):
         return (data >> 3)& 0xF
 
     return 0
+
+
         
-def receive(cmd = 7, timeout = 0.5, debug = False):
+def receive(cmd = 7, timeout = 3.2, debug = False):
     """GPIO.setup(23, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)"""
     buf = 0L
-    while (timeout > 0 ):
-        buf = (buf < 1) | pi1.read(23)
+    pi1.write(25, 0)
+    pi1.set_mode(23, pigpio.INPUT)
+    startTime = time()
+    curTime = startTime
+    counter = 0
+    while (curTime - startTime < timeout ):
+        #buf = ((buf << 1) | pi1.read(23) ) &  0xFFFFFF
         """edited here"""
-        delay = mySleep(1.0/Baud)
-        timeout = timeout - delay
+        #delay = mySleep(1.0/Baud)
+        curTime = time()
+        
+        if ((curTime - startTime)*Baud > counter):
+            #counter = counter + 1
+	    val = (curTime - startTime)*Baud
+            counter = int(val)
+            if (val - counter > 1):
+                print ("esacpe {}".format(val-counter))
+        
+            buf = ((buf << 1) | pi1.read(23) ) & 0xffffff
+        if (counter % 8 == 0):
+	    print('buf has = {}'.format(buf))
+        
+        #if (debug) :
+            #print('buf = {0:X}'.format(pi1.read(23)))
         #if (debug):
             #print ('timeout = {}'.format(timeout))
-        if ((buf & 0xc00003) == 0xc00003):
-            pa = (buf >> 19) & 0x1
-            trucked = (buf >> 4) & 0x7fff
-            dec = decH1511(trunced)
-            retVal = process(cmd, dec, pa)
-            if (retVal != 0):
-                return retVal
-        elif ( (buf & 0xc00000) == 0xc00000 and (buf & 0x3)!= 0):
+        if ((buf & 0xF0000F) == 0xc00003):
+            if (debug):
+                print ('11buf = {0:X}'.format(buf))
             pa = (buf >> 19) & 0x1
             trunked = (buf >> 4) & 0x7fff
             dec = decH1511(trunked)
             retVal = process(cmd, dec, pa)
             if (retVal != 0):
+                pi1.write(25, 1)
+                pi1.set_mode(23, pigpio.OUTPUT)
+                return retVal
+        elif ( (buf & 0xF00000) == 0xc00000 and (buf & 0x3)!= 0):
+            continue
+            if (debug):
+                print ('corrupted buf = {0:X}'.format(buf))
+            pa = (buf >> 19) & 0x1
+            trunked = (buf >> 4) & 0x7fff
+            dec = decH1511(trunked)
+            retVal = process(cmd, dec, pa)
+            if (retVal != 0):
+                pi1.write(25, 1)
+                pi1.set_mode(23, pigpio.OUTPUT)
                 return retVal
     if (debug):
         print('receive timeout')
+    pi1.write(25, 1)
     return False
         
-    
-    
 
-#GPIO.cleanup()
+
+
+    
+initial(500)    
+
