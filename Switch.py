@@ -137,19 +137,22 @@ def handle(text, mic, profile):
                 if (bool(re.search(r'\bon\b', text, re.IGNORECASE))):
                     print ('turn on switch')
                     turnSwitch(listID[ind], 1)
-                elif (bool(re.search(r'\boff\b',text, re.IGNORECASE))):
+                if (bool(re.search(r'\boff\b',text, re.IGNORECASE))):
                     print ('turn off switch')
                     turnSwitch(listID[ind], 0)
     if (toggle):
+        d = 0
         for item in listName:
             print (item)
             if (bool(re.search(r'\b'+item+ r'\b', text, re.IGNORECASE))):
                 print ('true1')
+		d = 1
                 ind = listName.index(item)
                 toggleSwitch(listID[ind])
-                return
-        info = "device not exist"
-        mic.say(info)
+                #return
+        if (not d):
+            info = "device not exist"
+            mic.say(info)
         return
     if (register):
         id = ctlSwitch.receive(cmd = BROAD, timeout = 1)
